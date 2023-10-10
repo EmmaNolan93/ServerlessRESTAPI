@@ -67,7 +67,13 @@ export class SimpleAppStack extends cdk.Stack {
         },
       }
     );
-
+    const allFn = new lambdanode.NodejsFunction(this, "AllFn", {
+      architecture: lambda.Architecture.ARM_64,
+      runtime: lambda.Runtime.NODEJS_16_X,
+      entry: `${__dirname}/../lambdas/getAllItems.ts`,
+      timeout: cdk.Duration.seconds(10),
+      memorySize: 128,
+    });
     const getMovieByIdURL = getMovieByIdFn.addFunctionUrl({
       authType: lambda.FunctionUrlAuthType.NONE,
       cors: {
@@ -75,9 +81,17 @@ export class SimpleAppStack extends cdk.Stack {
       },
     });
 
+    const getAllMovieByIdURL = allFn.addFunctionUrl({
+      authType: lambda.FunctionUrlAuthType.NONE,
+      cors: {
+        allowedOrigins: ["*"],
+      },
+    });
     moviesTable.grantReadData(getMovieByIdFn)
+    moviesTable.grantReadData(allFn)
 
     new cdk.CfnOutput(this, "Get Movie Function Url", { value: getMovieByIdURL.url });
+    new cdk.CfnOutput(this, "All Movies Function Url", { value: getAllMovieByIdURL.url });
 
   }
 }
