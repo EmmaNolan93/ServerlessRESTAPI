@@ -6,6 +6,7 @@ import { Construct } from 'constructs';
 import * as custom from "aws-cdk-lib/custom-resources";
 import { generateBatch } from "../shared/util";
 import {movies} from "../seed/movies";
+import * as apig from "aws-cdk-lib/aws-apigateway";
 // import * as sqs from 'aws-cdk-lib/aws-sqs';
 
 export class SimpleAppStack extends cdk.Stack {
@@ -92,6 +93,32 @@ export class SimpleAppStack extends cdk.Stack {
 
     new cdk.CfnOutput(this, "Get Movie Function Url", { value: getMovieByIdURL.url });
     new cdk.CfnOutput(this, "All Movies Function Url", { value: getAllMovieByIdURL.url });
+
+    const api = new apig.RestApi(this, "RestAPI", {
+      description: "demo api",
+      deployOptions: {
+        stageName: "dev",
+      },
+      // 👇 enable CORS
+      defaultCorsPreflightOptions: {
+        allowHeaders: ["Content-Type", "X-Amz-Date"],
+        allowMethods: ["OPTIONS", "GET", "POST", "PUT", "PATCH", "DELETE"],
+        allowCredentials: true,
+        allowOrigins: ["*"],
+      },
+    });
+
+    const moviesEndpoint = api.root.addResource("movies");
+    moviesEndpoint.addMethod(
+      "GET",
+      new apig.LambdaIntegration(allFn, { proxy: true })
+    );
+
+    const movieEndpoint = moviesEndpoint.addResource("{movieId}");
+    movieEndpoint.addMethod(
+      "GET",
+      new apig.LambdaIntegration(getMovieByIdFn, { proxy: true })
+    );
 
   }
 }
